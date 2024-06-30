@@ -4,28 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Task Scheduler with Background Notifications</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #f0f0f0;
-            --text-color: #333;
             --primary-color: #3498db;
             --secondary-color: #2ecc71;
-            --danger-color: #e74c3c;
+            --bg-color: #ecf0f1;
+            --text-color: #34495e;
             --card-bg: #fff;
             --input-bg: #fff;
+            --danger-color: #e74c3c;
         }
         .dark-mode {
             --bg-color: #2c3e50;
             --text-color: #ecf0f1;
-            --primary-color: #3498db;
-            --secondary-color: #2ecc71;
-            --danger-color: #e74c3c;
             --card-bg: #34495e;
             --input-bg: #2c3e50;
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
+            font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bg-color), #bdc3c7);
             color: var(--text-color);
             margin: 0;
             padding: 20px;
@@ -38,39 +36,47 @@
             border-radius: 15px;
             padding: 30px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: left;
         }
         h1 {
             text-align: center;
             margin-bottom: 30px;
             color: var(--primary-color);
+            font-weight: 300;
+            font-size: 2.5em;
         }
         .task-form {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 15px;
             margin-bottom: 20px;
         }
-        .task-input, .task-datetime, .task-category {
-            padding: 10px;
+        .task-input, .task-datetime, .task-category, .add-btn {
+            padding: 12px 15px;
             border: 1px solid var(--primary-color);
-            border-radius: 5px;
+            border-radius: 8px; /* Rounded corners */
             font-size: 16px;
             background-color: var(--input-bg);
             color: var(--text-color);
         }
+        .task-category {
+            border: 1px solid #ccc;
+        }
+        ::placeholder {
+            color: #999;
+        }
         .add-btn {
             grid-column: span 2;
-            padding: 10px 20px;
             background-color: var(--secondary-color);
             color: white;
             border: none;
-            border-radius: 5px;
             cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
+            font-size: 18px;
+            transition: background-color 0.3s, box-shadow 0.3s;
         }
         .add-btn:hover {
             opacity: 0.9;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         .task-list {
             list-style-type: none;
@@ -111,7 +117,7 @@
             border: none;
             border-radius: 3px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, box-shadow 0.3s;
         }
         .complete-btn {
             background-color: var(--secondary-color);
@@ -121,6 +127,7 @@
         }
         .complete-btn:hover, .delete-btn:hover {
             opacity: 0.9;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         .completed {
             opacity: 0.6;
@@ -131,16 +138,17 @@
             top: 20px;
             left: 20px;
             padding: 10px;
-            background-color: var(--primary-color);
+            background-color: #95a5a6;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
+            font-size: 14px;
+            transition: background-color 0.3s, box-shadow 0.3s;
         }
         .settings-btn:hover {
             opacity: 0.9;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         .theme-toggle {
             position: fixed;
@@ -195,8 +203,19 @@
             left: auto;
             right: 8px;
         }
-        .theme-toggle:hover .theme-toggle__slider::before {
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+        .empty-state {
+            text-align: center;
+            color: #95a5a6;
+            font-style: italic;
+            padding: 20px;
+        }
+        @media (max-width: 600px) {
+            .task-form {
+                grid-template-columns: 1fr;
+            }
+            .add-btn {
+                grid-column: 1;
+            }
         }
     </style>
 </head>
@@ -209,8 +228,11 @@
     <div class="container">
         <h1>Task Scheduler</h1>
         <form id="taskForm" class="task-form">
+            <label for="taskInput">Task Name</label>
             <input type="text" id="taskInput" class="task-input" placeholder="Enter a new task" required>
+            <label for="taskDateTime">Due Date</label>
             <input type="datetime-local" id="taskDateTime" class="task-datetime" required>
+            <label for="taskCategory">Category</label>
             <select id="taskCategory" class="task-category" required>
                 <option value="">Select a category</option>
                 <option value="work">Work</option>
@@ -224,7 +246,6 @@
     </div>
 
     <script>
-        // Check if service workers are supported
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('service-worker.js')
@@ -244,142 +265,69 @@
             const taskList = document.getElementById('taskList');
             const themeToggle = document.getElementById('themeToggle');
 
-            let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
-
-            function renderTasks() {
-                taskList.innerHTML = '';
-                tasks.forEach((task, index) => {
-                    const taskItem = document.createElement('li');
-                    taskItem.className = `task-item${task.completed ? ' completed' : ''}`;
-                    
-                    const taskInfo = document.createElement('div');
-                    taskInfo.className = 'task-info';
-                    
-                    const taskTitle = document.createElement('div');
-                    taskTitle.className = 'task-title';
-                    taskTitle.textContent = task.title;
-                    
-                    const taskDetails = document.createElement('div');
-                    taskDetails.className = 'task-details';
-                    taskDetails.textContent = `${new Date(task.dateTime).toLocaleString()} | ${task.category}`;
-                    
-                    const taskActions = document.createElement('div');
-                    taskActions.className = 'task-actions';
-
-                    const completeBtn = document.createElement('button');
-                    completeBtn.textContent = task.completed ? 'Undo' : 'Complete';
-                    completeBtn.className = 'complete-btn';
-                    completeBtn.addEventListener('click', () => toggleTaskCompletion(index));
-
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.textContent = 'Delete';
-                    deleteBtn.className = 'delete-btn';
-                    deleteBtn.addEventListener('click', () => deleteTask(index));
-
-                    taskInfo.appendChild(taskTitle);
-                    taskInfo.appendChild(taskDetails);
-                    taskActions.appendChild(completeBtn);
-                    taskActions.appendChild(deleteBtn);
-                    taskItem.appendChild(taskInfo);
-                    taskItem.appendChild(taskActions);
-                    taskList.appendChild(taskItem);
-                });
-            }
-
-            function addTask(title, dateTime, category) {
-                const newTask = { title, dateTime, category, completed: false };
-                tasks.push(newTask);
-                saveTasks();
-                renderTasks();
-                scheduleNotification(newTask);
-            }
-
-            function deleteTask(index) {
-                tasks.splice(index, 1);
-                saveTasks();
-                renderTasks();
-            }
-
-            function toggleTaskCompletion(index) {
-                tasks[index].completed = !tasks[index].completed;
-                saveTasks();
-                renderTasks();
-            }
-
-            function saveTasks() {
-                localStorage.setItem('tasks', JSON.stringify(tasks));
-            }
-
-            function scheduleNotification(task) {
-                if ('serviceWorker' in navigator && 'SyncManager' in window) {
-                    navigator.serviceWorker.ready.then(function(reg) {
-                        reg.sync.register(JSON.stringify(task));
-                    });
-                }
-
-                // Check if webhook is enabled and send notification
-                const webhookEnabled = localStorage.getItem('webhookEnabled') === 'true';
-                const webhookUrl = localStorage.getItem('webhookUrl');
-
-                if (webhookEnabled && webhookUrl) {
-                    const notificationData = {
-                        title: task.title,
-                        dateTime: task.dateTime,
-                        category: task.category
-                    };
-
-                    console.log('Attempting to send webhook notification to:', webhookUrl);
-                    console.log('Notification data:', notificationData);
-
-                    fetch(webhookUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(notificationData),
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        console.log('Webhook notification sent successfully');
-                        return response.text();
-                    })
-                    .then(data => console.log('Response from webhook:', data))
-                    .catch(error => {
-                        console.error('Error sending webhook notification:', error);
-                        alert('Failed to send webhook notification. Please check the webhook URL in settings and try again.');
-                    });
-                } else {
-                    console.log('Webhook notifications are disabled or URL is not set');
-                }
-            }
+            themeToggle.addEventListener('change', () => {
+                document.body.classList.toggle('dark-mode');
+            });
 
             taskForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                addTask(taskInput.value, taskDateTime.value, taskCategory.value);
-                taskInput.value = '';
-                taskDateTime.value = '';
-                taskCategory.value = '';
+
+                const taskText = taskInput.value.trim();
+                const taskTime = taskDateTime.value;
+                const taskCat = taskCategory.value;
+
+                if (taskText !== '' && taskTime !== '' && taskCat !== '') {
+                    addTask(taskText, taskTime, taskCat);
+                    taskInput.value = '';
+                    taskDateTime.value = '';
+                    taskCategory.value = '';
+                }
             });
 
-            themeToggle.addEventListener('change', () => {
-                document.body.classList.toggle('dark-mode');
-                localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
-            });
+            const addTask = (taskText, taskTime, taskCat) => {
+                const taskItem = document.createElement('li');
+                taskItem.className = 'task-item';
+                taskItem.innerHTML = `
+                    <div class="task-info">
+                        <div class="task-title">${taskText}</div>
+                        <div class="task-details">Due: ${new Date(taskTime).toLocaleString()} | Category: ${taskCat}</div>
+                    </div>
+                    <div class="task-actions">
+                        <button class="complete-btn">Complete</button>
+                        <button class="delete-btn">Delete</button>
+                    </div>
+                `;
 
-            // Initialize dark mode
-            if (localStorage.getItem('darkMode') === 'true') {
-                document.body.classList.add('dark-mode');
-                themeToggle.checked = true;
-            }
+                taskList.appendChild(taskItem);
+                updateEmptyState();
 
-            // Request notification permission
-            if ("Notification" in window) {
-                Notification.requestPermission();
-            }
+                const completeBtn = taskItem.querySelector('.complete-btn');
+                completeBtn.addEventListener('click', () => {
+                    taskItem.classList.toggle('completed');
+                });
 
-            renderTasks();
+                const deleteBtn = taskItem.querySelector('.delete-btn');
+                deleteBtn.addEventListener('click', () => {
+                    taskList.removeChild(taskItem);
+                    updateEmptyState();
+                });
+            };
+
+            const updateEmptyState = () => {
+                if (taskList.children.length === 0) {
+                    const emptyState = document.createElement('div');
+                    emptyState.className = 'empty-state';
+                    emptyState.textContent = 'No tasks scheduled';
+                    taskList.appendChild(emptyState);
+                } else {
+                    const emptyState = taskList.querySelector('.empty-state');
+                    if (emptyState) {
+                        taskList.removeChild(emptyState);
+                    }
+                }
+            };
+
+            updateEmptyState();
         });
     </script>
 </body>
