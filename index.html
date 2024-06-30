@@ -277,20 +277,30 @@
                 const taskCat = taskCategory.value;
 
                 if (taskText !== '' && taskTime !== '' && taskCat !== '') {
-                    addTask(taskText, taskTime, taskCat);
+                    const task = {
+                        text: taskText,
+                        time: taskTime,
+                        category: taskCat,
+                        completed: false
+                    };
+                    addTask(task);
+                    saveTask(task);
                     taskInput.value = '';
                     taskDateTime.value = '';
                     taskCategory.value = '';
                 }
             });
 
-            const addTask = (taskText, taskTime, taskCat) => {
+            const addTask = (task) => {
                 const taskItem = document.createElement('li');
                 taskItem.className = 'task-item';
+                if (task.completed) {
+                    taskItem.classList.add('completed');
+                }
                 taskItem.innerHTML = `
                     <div class="task-info">
-                        <div class="task-title">${taskText}</div>
-                        <div class="task-details">Due: ${new Date(taskTime).toLocaleString()} | Category: ${taskCat}</div>
+                        <div class="task-title">${task.text}</div>
+                        <div class="task-details">Due: ${new Date(task.time).toLocaleString()} | Category: ${task.category}</div>
                     </div>
                     <div class="task-actions">
                         <button class="complete-btn">Complete</button>
@@ -304,11 +314,14 @@
                 const completeBtn = taskItem.querySelector('.complete-btn');
                 completeBtn.addEventListener('click', () => {
                     taskItem.classList.toggle('completed');
+                    task.completed = !task.completed;
+                    saveTasks();
                 });
 
                 const deleteBtn = taskItem.querySelector('.delete-btn');
                 deleteBtn.addEventListener('click', () => {
                     taskList.removeChild(taskItem);
+                    saveTasks();
                     updateEmptyState();
                 });
             };
@@ -327,6 +340,36 @@
                 }
             };
 
+            const saveTasks = () => {
+                const tasks = [];
+                taskList.querySelectorAll('.task-item').forEach(taskItem => {
+                    const taskInfo = taskItem.querySelector('.task-info');
+                    const taskTitle = taskInfo.querySelector('.task-title').textContent;
+                    const taskDetails = taskInfo.querySelector('.task-details').textContent;
+                    const [_, taskTime, taskCategory] = taskDetails.match(/Due: (.*?) \| Category: (.*)/);
+                    const task = {
+                        text: taskTitle,
+                        time: new Date(taskTime).toISOString(),
+                        category: taskCategory,
+                        completed: taskItem.classList.contains('completed')
+                    };
+                    tasks.push(task);
+                });
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+            };
+
+            const saveTask = (task) => {
+                const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+                tasks.push(task);
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+            };
+
+            const loadTasks = () => {
+                const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+                tasks.forEach(task => addTask(task));
+            };
+
+            loadTasks();
             updateEmptyState();
         });
     </script>
