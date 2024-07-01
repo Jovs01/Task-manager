@@ -110,6 +110,46 @@
             color: #7f8c8d;
             text-transform: uppercase;
         }
+
+        .progress-bar-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            height: 20px;
+            background-color: #3498db;
+            width: 0%;
+            transition: width 0.5s;
+        }
+
+        .social-links {
+            margin-top: 20px;
+        }
+
+        .social-links a {
+            margin: 0 10px;
+            text-decoration: none;
+            color: #3498db;
+        }
+
+        .interactive-element {
+            margin-top: 20px;
+            cursor: pointer;
+        }
+
+        .interactive-element img {
+            max-width: 100px;
+            transition: transform 0.3s ease;
+        }
+
+        .interactive-element img:hover {
+            transform: rotate(20deg);
+        }
     </style>
 </head>
 <body>
@@ -132,30 +172,35 @@
                 <span class="countdown-label">Seconds</span>
             </div>
         </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <p>For more updates, follow us on our social media channels:</p>
+        <div class="social-links">
+            <a href="https://twitter.com/yourprofile" target="_blank">Twitter</a>
+            <a href="https://facebook.com/yourprofile" target="_blank">Facebook</a>
+        </div>
+        <div class="interactive-element" onclick="alert('Thanks for clicking!')">
+            <img src="https://th.bing.com/th/id/OIP.Cj7xX3HQOCb0Oq7-Q7aGxAHaDt?pid=ImgDet&rs=1" alt="Interactive character">
+        </div>
     </div>
     <script>
-        // Set the date we're counting down to
         const countDownDate = new Date("Jul 2, 2024 12:37:26").getTime();
-
-        // Update the count down every 1 second
         const x = setInterval(function() {
-            // Get today's date and time
             const now = new Date().getTime();
-
-            // Find the distance between now and the count down date
             const distance = countDownDate - now;
 
-            // Time calculations for hours, minutes and seconds
             const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-            // Display the result in the element with id="countdown"
             document.getElementById("hours").textContent = hours.toString().padStart(2, '0');
             document.getElementById("minutes").textContent = minutes.toString().padStart(2, '0');
             document.getElementById("seconds").textContent = seconds.toString().padStart(2, '0');
 
-            // If the count down is finished, write some text
+            const progress = (1 - distance / (countDownDate - now + distance)) * 100;
+            document.getElementById("progressBar").style.width = progress + "%";
+
             if (distance < 0) {
                 clearInterval(x);
                 document.getElementById("countdown").innerHTML = "<h2>We're Back!</h2>";
